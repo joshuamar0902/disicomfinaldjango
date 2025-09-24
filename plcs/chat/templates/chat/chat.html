@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard PLC</title>
+    <style>
+        body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card { text-align: center; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; }
+        .card h2 { margin: 0; color: #555; font-size: 1.2em; }
+        .card p { margin: 10px 0 0; font-size: 2.5em; font-weight: bold; color: #2c3e50; }
+        .card p.status-true { color: #27ae60; }
+        .card p.status-false { color: #c0392b; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="card">
+            <h2>Estado Bit</h2>
+            <p id="plc-bit">--</p>
+        </div>
+        <div class="card">
+            <h2>Valor Entero</h2>
+            <p id="plc-int">--</p>
+        </div>
+        <div class="card">
+            <h2>Valor Real</h2>
+            <p id="plc-float">--</p>
+        </div>
+        <div class="card">
+            <h2>Contador</h2>
+            <p id="plc-contador">--</p>
+        </div>
+    </div>
+
+    <script>
+        const plcSocket = new WebSocket('ws://' + window.location.host + '/ws/chat/');
+
+        plcSocket.onmessage = function(e) {
+            const parsedData = JSON.parse(e.data);
+            
+            if (parsedData.type === 'plc_update') {
+                const values = parsedData.data;
+                const bitElement = document.querySelector('#plc-bit');
+                
+                bitElement.textContent = values.Bit_1 ? 'ON' : 'OFF';
+                bitElement.className = values.Bit_1 ? 'status-true' : 'status-false';
+
+                document.querySelector('#plc-int').textContent = values.Valor_int;
+                document.querySelector('#plc-float').textContent = values.Valor_float;
+                document.querySelector('#plc-contador').textContent = values.Contador;
+            }
+        };
+
+        plcSocket.onopen = function(e) { console.log('Conexión WebSocket establecida.'); };
+        plcSocket.onclose = function(e) { console.error('Socket cerrado.'); };
+    </script>
+</body>
+</html>
