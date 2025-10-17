@@ -1,0 +1,852 @@
+/* --- Variables y Estilos Base --- */
+:root {
+    --gauge-size: 300px; /* Tamaño del velocímetro */
+    --gauge-border-width: 8px; /* Grosor del borde exterior */
+    --gauge-inner-bg: #f0f0f0; /* Color de fondo del dial */
+    --gauge-outer-border: #666; /* Color del borde exterior */
+    --gauge-bottom-cover-bg: #222; /* Color de la cubierta inferior */
+    --gauge-bottom-cover-text: #eee; /* Color del texto de la cubierta inferior */
+    --text-color-dark: #333; /* Color de texto general */
+    --needle-color: #e53935; /* Color de la aguja */
+    --center-point-color: #333; /* Color del punto central */
+
+    /* Colores para las zonas de llenado (como en la imagen) */
+    --fill-color-green: #2ecc71; /* Verde */
+    --fill-color-yellow: #f1c40f; /* Amarillo */
+    --fill-color-orange: #e67e22; /* Naranja */
+    --fill-color-red: #e74c3c; /* Rojo */
+}
+
+* {
+   margin: 0;
+   padding: 0;
+   box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto Mono', monospace;
+    background-color: #3a3a3a;
+    color: #f0f2f5; /* Un color de texto claro por defecto */
+    
+    /* --- AÑADE ESTO PARA ORGANIZAR TODO --- */
+    display: flex;
+    flex-direction: column; /* Apila todo verticalmente */
+    align-items: center;    /* Centra todo horizontalmente */
+    gap: 30px;              /* Añade un buen espacio entre cada sección */
+    padding: 20px 10px;     /* Espacio en los bordes (arriba/abajo y lados) */
+    min-height: 100vh;
+}
+
+.instrument-panel {
+    display: flex;
+    gap: 40px;
+    padding: 30px;
+    height: 500px;
+    background-color: #4a4a4a;
+    border-radius: 10px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4);
+}
+
+.gauge-card {
+    background-color: #5a5a5a;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+/* --- Contenedor del Velocímetro --- */
+.gauge-container {
+    width: var(--gauge-size);
+    height: var(--gauge-size);
+    position: relative;
+    border-radius: 50%; /* Círculo completo */
+    background-color: var(--gauge-outer-border); /* Color del borde exterior */
+    overflow: hidden; /* Para recortar lo que sobresalga */
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* Sombra interior para profundidad */
+}
+
+/* Fondo interior del dial (la parte blanca) */
+.gauge-background {
+    position: absolute;
+    top: var(--gauge-border-width);
+    left: var(--gauge-border-width);
+    width: calc(100% - (2 * var(--gauge-border-width)));
+    height: calc(100% - (2 * var(--gauge-border-width)));
+    border-radius: 50%;
+    background-color: var(--gauge-inner-bg);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+/* Zonas de color de llenado (como en la imagen, usando un pseudo-elemento y gradiente cónico) */
+.gauge-fill-zones {
+    position: absolute;
+    top: var(--gauge-border-width);
+    left: var(--gauge-border-width);
+    width: calc(100% - (2 * var(--gauge-border-width)));
+    height: calc(100% - (2 * var(--gauge-border-width)));
+    border-radius: 50%;
+    z-index: 2;
+    /* Clave: Un gradiente más simple que define el arco de 270° y luego lo rotamos a su posición */
+    background: conic-gradient(
+        var(--fill-color-green) 0deg 216deg,  /* Verde para el primer 80% del arco */
+        var(--fill-color-yellow) 216deg 240deg, /* Amarillo para el segundo 20% del arco */
+        var(--fill-color-red) 240deg 270deg,   /* Rojo para el último 20% del arco */
+        transparent 270deg 360deg             /* Zona transparente */
+    );
+    transform: rotate(-135deg); /* Gira todo el gradiente para que empiece en la posición correcta */
+    mask: radial-gradient(circle at 50% 50%, transparent calc(var(--gauge-size) / 2 - 30px), black calc(var(--gauge-size) / 2 - 15px));
+    -webkit-mask: radial-gradient(circle at 50% 50%, transparent calc(var(--gauge-size) / 2 - 30px), black calc(var(--gauge-size) / 2 - 15px));
+}
+
+
+/* Cubierta inferior (la franja negra de abajo) */
+.gauge-bottom-cover {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(var(--gauge-size) - (2 * var(--gauge-border-width))); /* Ancho del dial interno */
+    height: 60px; /* Altura de la franja */
+    background-color: var(--gauge-bottom-cover-bg);
+    border-radius: 0 0 100px 100px; /* Borde redondeado en la parte de abajo */
+    z-index: 4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 20px;
+    font-size: 14px;
+    color: var(--gauge-bottom-cover-text);
+    box-shadow: inset 0 5px 10px rgba(0,0,0,0.3);
+}
+
+.bottom-label {
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 1px;
+    height: .5px;
+}
+/* --- Marcas y Números --- */
+.gauge-marks-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.gauge-mark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0; /* Punto de pivote es el centro */
+    background-color: #6c757d;
+    height: 12px; /* Largo de la marca */
+    width: 2px; /* Grosor */
+    transform: translate(-50%, -50%) rotate(var(--rotation)) translateY(-135px); /* Rotar y empujar afuera */
+    border-radius: 1px;
+}
+
+.gauge-mark-large {
+    background-color: #495057;
+    height: 20px; /* Marcas grandes más largas */
+    width: 3px;
+    transform: translate(-50%, -50%) rotate(var(--rotation)) translateY(-130px); /* Ligeramente más cerca */
+}
+
+.gauge-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 18px;
+    color: var(--text-color-dark);
+    font-weight: 700;
+    transform: translate(-50%, -50%) rotate(var(--rotation)) translateY(-165px) rotate(var(--counter-rotation));
+}
+
+/* --- Aguja y Punto Central --- */
+.needle {
+    position: absolute;
+    /* Clave: Posicionamos la base (bottom) de la aguja en el centro */
+    bottom: 50%; 
+    left: 50%;
+    width: 6px;
+    height: 100px;
+    background-color: var(--needle-color);
+    /* Clave: El origen de la rotación es la base */
+    transform-origin: center bottom; 
+    /* Clave: Solo necesitamos centrarla horizontalmente */
+    transform: translateX(-50%) rotate(-145deg); 
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 6;
+    border-radius: 3px 3px 0 0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+.needle::before {
+
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 15px; /* Base más ancha de la aguja */
+    height: 15px;
+    background-color: var(--needle-color);
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+}
+
+.center-point {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 35px;
+    height: 35px;
+    background-color: var(--center-point-color);
+    border-radius: 50%;
+    z-index: 7;
+    border: 3px solid var(--gauge-inner-bg);
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* --- Display de Puntuación --- */
+.score-display {
+    position: absolute;
+    bottom: 25px; /* Posicionado sobre la cubierta inferior */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 35px;
+    background-color: #333;
+    border: 1px solid #000;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    color: #0f0; /* Color verde brillante para un display digital */
+    font-weight: bold;
+    letter-spacing: 2px;
+    box-shadow: inset 0 0 8px rgba(0,255,0,0.5);
+    z-index: 5;
+    padding-top: 2px;
+}
+.score-value {
+    /* El span dentro de score-display */
+    min-width: 80px; /* Asegura un ancho mínimo para los ceros iniciales */
+    text-align: center;
+}
+
+.footer-display {
+    background-color: #333;
+    color: #0f0;
+    font-size: 16px;
+    padding: 8px 15px;
+    border-radius: 5px;
+    letter-spacing: 1px;
+    margin-top: -10px; /* Superponer un poco */
+    box-shadow: inset 0 0 5px rgba(0,255,0,0.3);
+}
+
+
+/* --- Controles del Slider --- */
+.controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background-color: #5a5a5a;
+    border-radius: 10px;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.3);
+}
+
+label {
+    font-size: 18px;
+    color: #eee;
+    font-weight: 600;
+}
+
+input[type="range"] {
+    width: 350px;
+    height: 8px;
+    -webkit-appearance: none;
+    background: linear-gradient(to right, var(--fill-color-green), var(--fill-color-yellow), var(--fill-color-red));
+    border-radius: 5px;
+    outline: none;
+    opacity: 0.9;
+    transition: opacity .2s;
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2), 
+                inset -2px -2px 5px rgba(255,255,255,0.2);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ccc;
+    cursor: grab;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    border: 2px solid #fff;
+}
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ccc;
+    cursor: grab;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    border: 2px solid #fff;
+}
+
+/* --- 4. Modificadores por ID --- */
+/* Aquí es donde defines los atributos ÚNICOS de cada medidor */
+
+#gauge1 {
+    --gauge-size: 250px; /* Grande */
+    --gauge-border-width: 12px;
+}
+
+#gauge2 {
+    --gauge-size: 250px; /* Mediano */
+    --gauge-border-width: 8px;
+}
+
+#gauge3 {
+    --gauge-size: 250px; /* Pequeño */
+    --gauge-border-width: 6px;
+}
+#gauge4 {
+    --gauge-size: 250px; /* Extra Grande */
+    --gauge-border-width: 14px;
+}
+
+/* --- 5. Controles (Slider) --- */
+.controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background-color: #5a5a5a;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+}
+label {
+    font-size: 18px;
+    color: #eee;
+    font-weight: 600;
+}
+input[type="range"] {
+    width: 100%;
+}
+/* style.css */
+/* ... (pegar al final de la sección 3, antes de los modificadores por ID) ... */
+
+.gauge-marks-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 3;
+}
+
+.gauge-mark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 8%; /* Altura relativa al tamaño del medidor */
+    background-color: #6c757d;
+    transform-origin: center;
+    /* La rotación se aplica con JS, la traslación es adaptable */
+    transform: translateY(calc(var(--gauge-size) * -0.42)) rotate(var(--rotation, 0deg));
+}
+
+.gauge-mark-large {
+    width: 3px;
+    height: 12%; /* Las marcas grandes son más largas */
+    background-color: #333;
+}
+
+.gauge-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    color: var(--text-color-dark);
+    font-weight: bold;
+    font-size: calc(var(--gauge-size) * 0.1); /* Texto adaptable */
+    transform-origin: center;
+    /* La rotación y contra-rotación se aplican con JS */
+    transform: translateY(calc(var(--gauge-size) * -0.6)) rotate(var(--rotation, 0deg)) rotate(var(--counter-rotation, 0deg));
+}
+
+
+
+#headerboton{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background-color: #5a5a5a;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.3);
+}
+
+#titleboton1:before{
+  transition: 0.5s all ease;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  right: 50%;
+  bottom: 0;
+  opacity: 0;
+  content: '';
+  background-color: #ff0000;
+  z-index: -1;
+}
+
+#titleboton1:hover, #titleboton1:focus {
+  color: white;
+}
+
+#titleboton1:hover:before, #titleboton1:focus:before {
+  transition: 0.5s all ease;
+  left: 0;
+  right: 0;
+  opacity: 1;
+}
+
+#titleboton1:active {
+  transform: scale(0.9);
+}
+#titleboton{
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    text-align: center;
+    font-size: 24px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: inline-block;
+    font-weight: bold;
+    padding: 0.7em 2em;
+}
+#divbotoncito{
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background-color: #5a5a5a;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.3);
+}
+#titleboton2 {
+  padding: 0.7em 2em;
+  border: 3px solid #2ecc71;
+  border-radius: 300px;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.1);
+  color: #2ecc71;
+  transition: 0.3s ease all;
+  z-index: 1;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  background-color: transparent;
+  overflow: hidden;
+  cursor: pointer;
+  height: 200px;
+  width: 200px;
+
+}
+#titleboton1 {
+  padding: 0.7em 2em;
+  border: 3px solid #ff0000;
+  border-radius: 300px;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.1);
+  color: #ff0000;
+  transition: 0.3s ease all;
+  z-index: 1;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  background-color: transparent;
+  overflow: hidden;
+  cursor: pointer;
+  height: 200px;
+  width: 200px;
+
+}
+#titleboton2:before{
+  transition: 0.5s all ease;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  right: 50%;
+  bottom: 0;
+  opacity: 0;
+  content: '';
+  background-color: #2ecc71;
+  z-index: -1;
+}
+
+#titleboton2:hover, #titleboton2:focus {
+  color: white;
+}
+
+#titleboton2:hover:before, #titleboton2:focus:before {
+  transition: 0.5s all ease;
+  left: 0;
+  right: 0;
+  opacity: 1;
+}
+
+#titleboton2:active {
+  transform: scale(0.9);
+}
+.uiverse-pixel-card {
+    display: none;
+  font-family: "Courier New", monospace;
+  font-size: 1em;
+  background: #ff0000;
+  width: 20em;
+  padding: 1em;
+  image-rendering: pixelated;
+  text-shadow: 1px 1px #000;
+  box-shadow:
+    0 0 0 0.15em #000,
+    0 0 0 0.45em #000,
+    0 0.5em 0 0 #ff0000
+    0 0.5em 0 0.15em #000;
+  transition: transform 0.2s steps(1);
+}
+
+.uiverse-pixel-card:hover {
+  transform: translateY(-0.2em);
+  animation: uiverse-card-glitch 0.3s steps(2) infinite;
+  background: #ff0000;
+}
+
+.uiverse-card-header {
+  font-size: 1.2em;
+  margin-bottom: 0.5em;
+  border-bottom: 2px solid #000;
+  padding-bottom: 0.25em;
+}
+
+.uiverse-card-body p {
+  margin: 0.5em 0;
+  line-height: 1.4;
+}
+
+.status {
+  color: #00ff99;
+  font-weight: bold;
+  text-shadow: 1px 1px #000;
+}
+
+/* Glitch animation */
+@keyframes uiverse-card-glitch {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1px, 1px);
+  }
+  50% {
+    transform: translate(1px, -1px);
+  }
+  75% {
+    transform: translate(-1px, -1px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.status-on {
+    border-color: #2ecc71; /* Verde */
+    color: #2ecc71;
+}
+
+.status-on:hover {
+    background-color: #2ecc71;
+    color: white;
+}
+
+/* Estado OFF (Desactivado) */
+.status-off {
+    border-color: #e74c3c; /* Rojo */
+    color: #e74c3c;
+}
+
+.status-off:hover {
+    background-color: #e74c3c;
+    color: white;
+}
+/* --- ESTILOS RESPONSIVOS PARA MÓVILES --- */
+
+@media (max-width: 768px) {
+
+    /* 1. Cambiamos el panel principal para que sea vertical */
+    .instrument-panel {
+        flex-direction: column; /* Apila los medidores verticalmente */
+        height: auto;           /* La altura ahora es automática */
+        padding: 15px;          /* Un poco menos de espacio interior */
+        width: 95%;             /* Ocupa casi todo el ancho del teléfono */
+    }
+
+    /* 2. Hacemos los medidores un poco más pequeños */
+    #gauge1,
+    #gauge2,
+    #gauge3,
+    #gauge4 {
+        --gauge-size: 220px; /* Reducimos el tamaño de 250px a 220px */
+    }
+    
+    /* 3. Ajustamos el ancho de los sliders */
+    .controls {
+        width: 100%; /* El contenedor del slider ocupa todo el ancho de su tarjeta */
+    }
+}
+
+#cilindro {
+    width: 120px;
+    height: 300px;
+    background: white;
+    border: 3px solid #222;
+    border-radius: 60px / 30px;
+    position: relative;
+    margin: 20px auto;
+    box-shadow: 
+        inset 0 0 15px rgba(0,0,0,0.7), 
+        0 5px 15px rgba(0,0,0,0.3);
+    overflow: hidden; 
+    font-family: Arial, sans-serif;
+}
+
+#contenidocilindro {
+    width: 100px;
+    height: 200px; /* Nivel de llenado */
+    background: blue;
+    border-radius: 50px / 25px;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1; 
+}
+
+#cilindro::before { /* Tapa */
+    content: "";
+    position: absolute;
+    top: -10px; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 124px; 
+    height: 22px; 
+    background: linear-gradient(to right, #555, #888, #555);
+    border-radius: 62px / 11px;
+    border: 2px solid #333; 
+    box-shadow: 
+        inset 0 0 4px rgba(0,0,0,0.6),
+        -48px 0 0 -3px #222, 
+        -48px 0 0 -1px #999, 
+        48px 0 0 -3px #222, 
+        48px 0 0 -1px #999,
+        -0px 0 0 -3px #222, 
+        -0px 0 0 -1px #999;
+    z-index: 3; 
+}
+#cilindro::before { 
+    content: "";
+    position: absolute;
+    top: 0;
+    top: 10px; 
+    left: 90%;
+    transform: translateX(-50%);
+    width: 4px; 
+    height: 270px; 
+    background: #111;
+    box-shadow: 0 0 6px rgba(0,0,0,0.8);
+    z-index: 2; 
+    border-radius: 2px; 
+
+}
+#cilindro::after{
+    position: absolute;
+    /* Ajustes de posición para colocar la barra horizontalmente */
+    top: 50%; /* Coloca la línea a la mitad de la altura del contenedor */
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centra el elemento perfectamente */
+    
+    /* INTERCAMBIO DE DIMENSIONES: 
+     * El 'height' anterior (270px) se convierte en el nuevo 'width'.
+     * El 'width' anterior (4px) se convierte en el nuevo 'height' (la delgadez). */
+    width: 100px; /* <--- Ancho de la línea (ajusta este valor) */
+    height: 4px; /* <--- Altura/grosor de la línea */
+    
+    background: #111;
+    box-shadow: 0 0 6px rgba(0,0,0,0.8);
+    z-index: 2; 
+    border-radius: 2px;
+}
+.nivel {
+    position: absolute;
+    left: 80px; /* Posición para quedar A LA IZQUIERDA de la barra negra */
+    font-size: 10px;
+    color: #000000;
+    
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    z-index: 5;
+    text-align: right;
+    width: 20px;
+    
+}
+
+.n1 { 
+    content: "0"; 
+    top: 265px; /* Ajuste de posición */
+    left: 68px;
+    font-size: 15px;
+    
+} 
+.n2 { 
+    content: "60"; 
+    top: 140px; /* Ajuste de posición */
+    left: 68px;
+    font-size: 15px;
+} 
+.n3 { 
+    content: "120"; 
+    top: 6px; /* Ajuste de posición */
+    left: 66px;
+    font-size: 15px;
+}
+
+
+/* LÍNEA HORIZONTAL: SE ESTILIZA EL ELEMENTO <span id="linea-extra"></span> */
+#linea-extra {
+    position: absolute;
+    /* Coloca la línea de nivel horizontal (ej. a 50% de altura) */
+    top: 5%; 
+    left: 85%;
+    transform: translate(-50%, -50%); /* Centra el elemento */;
+    transform: translate(-50%, -50%); /* Centra el elemento */
+    
+    width: 15px; /* Anchura de la línea */
+    height: 4px; /* Grosor */
+    
+    background: #111;
+    box-shadow: 0 0 6px rgba(0,0,0,0.8);
+    z-index: 3; 
+    border-radius: 2px;
+}
+#linea-extra2 {
+    position: absolute;
+    /* Coloca la línea de nivel horizontal (ej. a 50% de altura) */
+    top: 50%;
+    left: 85%;
+    transform: translate(-50%, -50%); /* Centra el elemento */;
+    transform: translate(-50%, -50%); /* Centra el elemento */
+    
+    width: 15px; /* Anchura de la línea */
+    height: 4px; /* Grosor */
+    
+    background: #111;
+    box-shadow: 0 0 6px rgba(0,0,0,0.8);
+    z-index: 3; 
+    border-radius: 2px;
+}
+#linea-extra3 {
+    position: absolute;
+    /* Coloca la línea de nivel horizontal (ej. a 50% de altura) */
+    top: 93%;
+    left: 85%;
+    transform: translate(-50%, -50%); /* Centra el elemento */;
+    transform: translate(-50%, -50%); /* Centra el elemento */
+    
+    width: 15px; /* Anchura de la línea */
+    height: 4px; /* Grosor */
+    
+    background: #111;
+    box-shadow: 0 0 6px rgba(0,0,0,0.8);
+    z-index: 3; 
+    border-radius: 2px;
+}
+/* --- CILINDRO --- */
+#cilindro {
+  position: relative;
+  width: 120px;
+  height: 300px;
+  background: linear-gradient(45deg, #999, #ccc);
+  border-radius: 60px / 30px;
+  border: 2px solid #777;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  margin: 40px auto;
+}
+
+/* Contenido del cilindro (el líquido) */
+#contenidocilindro {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0%; /* Inicia vacío */
+  background: linear-gradient(to top, #00b4d8, #90e0ef);
+  border-top: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+  border-radius: 60px / 30px;
+  transition: height 1s ease-in-out;
+}
+
+/* Escala al lado */
+#escala-medidor {
+  position: absolute;
+  right: -40px;
+  top: 0;
+  height: 100%;
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: white;
+  font-weight: bold;
+}
+
+.nivel {
+  position: absolute;
+  right: -30px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.n1 { bottom: 0; }
+.n2 { bottom: 50%; }
+.n3 { top: 0; }

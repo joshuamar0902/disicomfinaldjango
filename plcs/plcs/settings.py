@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-sb6c3%(0s8ft@67nl1crvmz(xtyfflft%e9u%pga_j23g0u*0z
 DEBUG = True
 
 # plcs/settings.py
-ALLOWED_HOSTS = ['192.168.144.146']
+ALLOWED_HOSTS = ['192.168.144.146','127.0.0.1','192.168.144.32','192.168.0.100','192.168.100.6','192.168.0.102']
 
 
 # Application definition
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -118,6 +119,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
